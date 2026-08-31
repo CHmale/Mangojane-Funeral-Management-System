@@ -1,0 +1,178 @@
+# ASP.NET Core Web Portal - Requirements Specification
+
+**Author:** Kamohelo Mohlohlo  
+**Student Number:** 223010767  
+**Role:** Web Developer (ASP.NET Core)  
+**Date:** August 2026  
+**Phase:** 1 - Planning & Requirements  
+**Status:** ✅ Completed
+
+---
+
+## 📋 Table of Contents
+
+1. [Web Portal Overview](#1-web-portal-overview)
+2. [Stakeholder Needs (Web-Specific)](#2-stakeholder-needs-web-specific)
+3. [Functional Requirements (FR5-FR8)](#3-functional-requirements-fr5-fr8)
+4. [Admin User Roles](#4-admin-user-roles)
+
+5. [Web Portal Pages](#5-web-portal-pages)
+6. [Non-Functional Requirements (Web-Specific)](#6-non-functional-requirements-web-specific)
+7. [Integration Requirements](#7-integration-requirements)
+8. [Technology Stack](#8-technology-stack)
+9. [Database Tables (Web-Specific)](#9-database-tables-web-specific)
+10. [UI Wireframe Concepts](#10-ui-wireframe-concepts)
+11. [Phase 1 Reflection](#11-phase-1-reflection)
+12. [Next Steps - Phase 2](#12-next-steps-phase-2)
+
+---
+
+## 1. Web Portal Overview
+
+### 1.1 Purpose
+
+The ASP.NET Core web portal serves as the **central management dashboard** for Mangojane Funeral Parlor administrators. It provides real-time operational visibility and control over:
+
+- Booking processing and approval
+- Resource (hearse, driver, equipment) allocation
+- Policy and payment management
+- Daily dispatch reporting
+
+### 1.2 Target Users
+
+| User Type | Description |
+|-----------|-------------|
+| **Manager** | Full access: Approve bookings, manage resources, view reports |
+| **Dispatcher** | Schedule assets, view schedules, update statuses |
+| **Front-Desk** | View bookings, log payments, search policies |
+| **Management** | Monitor KPIs, audit logs, revenue reports |
+
+### 1.3 Portal Objectives
+
+| Objective | Description |
+|-----------|-------------|
+| **Real-time Visibility** | Admin sees booking requests immediately after client submits |
+| **Conflict Prevention** | System prevents double-booking of hearses and equipment |
+| **Efficient Processing** | Quick approval/rejection workflow for bookings |
+| **Policy Management** | Easy search and verification of burial society records |
+| **Operational Reporting** | Generate daily schedules for staff |
+
+---
+
+## 2. Stakeholder Needs (Web-Specific)
+
+Based on stakeholder interviews and confirmation (Appendix A & B of SRS):
+
+| Need | Importance | How Web Portal Addresses It |
+|------|------------|----------------------------|
+| Eliminate paper diary double-bookings | CRITICAL | Calendar view with conflict detection |
+| Quickly verify policy status | HIGH | Searchable policy database |
+| Real-time service schedule visibility | HIGH | Live dashboard with all bookings |
+| Easy payment logging | MEDIUM | Payment recording form with receipts |
+| Staff coordination | MEDIUM | Daily dispatch schedule reports |
+| Data privacy (POPIA compliance) | CRITICAL | Role-based access, SSL encryption |
+
+---
+
+## 3. Functional Requirements (FR5-FR8)
+
+### FR5: Admin Booking Approval/Rejection
+
+| Requirement | Description | Priority |
+|-------------|-------------|----------|
+| FR5.1 | Display incoming booking requests in a sortable table | MUST HAVE |
+| FR5.2 | Show client name, package, preferred date, and status | MUST HAVE |
+| FR5.3 | Allow administrators to approve, reject, or modify bookings | MUST HAVE |
+| FR5.4 | Send status update notifications to Flutter app via Supabase | MUST HAVE |
+| FR5.5 | Track who approved/rejected and timestamp | SHOULD HAVE |
+
+**User Flow:**
+1. Admin logs into web portal
+2. Sees pending bookings in the dashboard queue
+3. Clicks on a booking to view details
+4. Reviews client information and package details
+5. Approves (status: "Approved") or Rejects (status: "Rejected")
+6. System sends real-time update to client's mobile app
+
+### FR6: Asset (Hearse/Equipment) Scheduling
+
+| Requirement | Description | Priority |
+|-------------|-------------|----------|
+| FR6.1 | Assign hearses, drivers, and equipment to approved bookings | MUST HAVE |
+| FR6.2 | Visual calendar with conflict detection | MUST HAVE |
+| FR6.3 | Prevent double-booking of resources for same time slot | MUST HAVE |
+| FR6.4 | Display availability of resources | MUST HAVE |
+| FR6.5 | Allow manual override (with reason field) | SHOULD HAVE |
+
+**Asset Types:**
+| Asset Type | Description | Quantity (Example) |
+|------------|-------------|-------------------|
+| Hearse | Vehicle for transporting deceased | 2 |
+| Family Car | Vehicle for family transportation | 2 |
+| Tent | Service tent for burial site | 3 |
+| Lowering Equipment | Equipment for lowering casket | 2 |
+| Chairs | Seating for funeral service | 50 |
+| Staff | Drivers, mortuary staff | 4 |
+
+### FR7: Policy and Payment Management
+
+| Requirement | Description | Priority |
+|-------------|-------------|----------|
+| FR7.1 | Search burial society policies by policy number or name | MUST HAVE |
+| FR7.2 | View policy status and payment history | MUST HAVE |
+| FR7.3 | Log premium payments | MUST HAVE |
+| FR7.4 | Generate payment receipt (PDF) | SHOULD HAVE |
+| FR7.5 | Track outstanding payments | COULD HAVE |
+
+**Policy Information:**
+| Field | Description |
+|-------|-------------|
+| Policy Number | Unique identifier |
+| Policyholder Name | Full name of the policyholder |
+| Policy Type | Full, Partial, Premium |
+| Status | Active, Lapsed, Closed |
+| Payment History | Date, Amount, Method |
+| Outstanding Balance | Any amount overdue |
+
+### FR8: Daily Dispatch Reports
+
+| Requirement | Description | Priority |
+|-------------|-------------|----------|
+| FR8.1 | Generate PDF reports for staff | SHOULD HAVE |
+| FR8.2 | Include: Hearse assignments, driver schedules, cemetery locations | SHOULD HAVE |
+| FR8.3 | Available for printing or mobile viewing | SHOULD HAVE |
+| FR8.4 | Export to PDF format | SHOULD HAVE |
+| FR8.5 | Email report to staff | COULD HAVE |
+
+---
+
+## 4. Admin User Roles
+
+### 4.1 Role Definitions
+
+| Role | Access Level | Permissions |
+|------|--------------|-------------|
+| **Super Admin** | Full | All CRUD operations, user management, system settings |
+| **Manager** | High | Approve/reject bookings, manage assets, view all reports |
+| **Dispatcher** | Medium | Assign assets, view schedules, update booking statuses |
+| **Front-Desk** | Limited | View bookings, log payments, search policies |
+| **View Only** | Restricted | View reports only, no editing |
+
+### 4.2 Permission Matrix
+
+| Function | Super Admin | Manager | Dispatcher | Front-Desk | View Only |
+|----------|-------------|---------|------------|------------|-----------|
+| View Bookings | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Approve/Reject | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Assign Assets | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Manage Policies | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Log Payments | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Generate Reports | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Manage Users | ✅ | ❌ | ❌ | ❌ | ❌ |
+| System Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+## 5. Web Portal Pages
+
+### 5.1 Page Structure
