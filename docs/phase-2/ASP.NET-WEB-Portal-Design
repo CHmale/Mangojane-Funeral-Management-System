@@ -1,0 +1,137 @@
+# ASP.NET Core Staff Administration Portal Design
+
+## Phase 2 – System Architecture and Design
+
+### Developer
+Kamohelo Mohlohlo  
+Role: Web Developer – ASP.NET Core
+
+## Purpose
+
+The ASP.NET Core web portal will provide Mangojane Funeral Parlour staff
+with an administrative interface for managing funeral operations.
+
+The portal will connect to the same Supabase backend used by the Flutter
+Client application. This will allow information created from the mobile
+application to become available to authorised staff.
+
+## Planned Staff Portal Functions
+
+The ASP.NET Core portal will allow authorised staff to:
+
+- Log into the staff administration portal.
+- View an operational dashboard.
+- View and manage Client funeral bookings.
+- Review individual booking information.
+- Approve or reject funeral bookings.
+- Assign available resources to approved bookings.
+- Allocate hearses, drivers and equipment.
+- View the daily dispatch schedule.
+- Search burial society policy information.
+- Record premium payments.
+- View operational reports.
+- Manage authorised system users.
+- Manage staff profile information.
+- Log out securely.
+
+## Booking Management Flow
+
+The planned booking workflow will be:
+
+Client Mobile Application
+→ Supabase
+→ ASP.NET Core Staff Portal
+→ Staff Reviews Booking
+→ Approve or Reject Booking
+→ Allocate Resources
+→ Update Supabase
+→ Updated Status Available to Client
+
+When a Client submits a funeral booking through the Flutter application,
+the booking will be stored in Supabase.
+
+Supabase Realtime will be used so that new or updated booking information
+can become available to the ASP.NET Core portal without staff having to
+manually refresh the system.
+
+The system has a target synchronization time of less than three seconds.
+This is currently a system requirement and will need to be verified during
+implementation and testing.
+
+## Resource Allocation
+
+For approved bookings, staff will be able to allocate operational
+resources such as:
+
+- Hearse
+- Driver
+- Funeral tent
+- Chairs
+- Family vehicles
+- Other required funeral equipment
+
+The system will check resource availability before an allocation is
+confirmed to reduce scheduling conflicts.
+
+## Burial Society and Premium Management
+
+The staff portal will provide functionality for searching burial society
+policies and recording premium payments.
+
+The current prototype will record payment information manually.
+Integration with a live payment gateway is outside the current project
+scope.
+
+## Daily Dispatch and Reporting
+
+The portal will provide a Daily Dispatch Schedule showing funeral
+assignments and allocated resources.
+
+Staff will also have access to reporting functionality for daily
+operational information.
+
+## ASP.NET Prototype Screens
+
+The Phase 2 interface prototype includes:
+
+1. Staff Login
+2. Dashboard
+3. Manage Bookings
+4. Booking Details
+5. Resource Allocation
+6. Policies & Premiums
+7. Record Premium Payment
+8. Payment Recorded
+9. Daily Dispatch Schedule
+10. Reports
+11. Manage Users
+12. Add User
+13. User Saved
+14. Edit User
+15. Staff Profile
+16. Logout Confirmation
+17. Action Error
+18. Booking Approved
+19. Booking Rejected
+20. Allocation Saved
+
+## Technology
+
+The planned web portal will use:
+
+- ASP.NET Core MVC
+- C#
+- .NET 8
+- Supabase PostgreSQL
+- Supabase Authentication
+- Supabase Realtime
+- Row-Level Security
+
+## Phase 2 Status
+
+During Phase 2, the focus is on system architecture, database design,
+UML modelling and interface/prototype design.
+
+The functions described in this document represent the intended system
+behaviour. They should not be interpreted as completed implementation
+unless they have been developed and tested in a later project phase.
