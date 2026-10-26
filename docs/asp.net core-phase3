@@ -1,0 +1,345 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Mangojane_Funeral_Management.Models;
+using Mangojane_Funeral_Management.Services;
+using System.Security.Claims;
+
+namespace Mangojane_Funeral_Management.Controllers
+{
+    public class AccountController : Controller
+    {
+        private readonly ISupabaseService _supabase;
+        private readonly Supabase.Client _supabaseClient;
+
+        public AccountController(
+            ISupabaseService supabase,
+            Supabase.Client supabaseClient)
+        {
+            _supabase = supabase;
+            _supabaseClient = supabaseClient;
+        }
+
+        [HttpGet]
+        public IActionResult Login(string returnUrl = null)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("Index", "Dashboard");
+            }
+            ViewData["ReturnUrl"] = returnUrl;
+            return View(new LoginViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var user = await _supabase.AuthenticateUserAsync(model.Email, model.Password);
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Invalid work email or password.");
+                return View(model);
+            }
+
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new System.Security.Claims.Claim(
+    "SupabaseAuthUserId",
+    user.AuthUserId?.ToString() ?? ""
+),
+                new System.Security.Claims.Claim(ClaimTypes.Name, user.FullName),
+                new System.Security.Claims.Claim(ClaimTypes.Email, user.Email),
+                new System.Security.Claims.Claim(ClaimTypes.Role, user.Role),
+                new System.Security.Claims.Claim("Branch", user.Branch ?? "Central Office")
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = false,
+                AllowRefresh = true
+            };
+
+            authProperties.StoreTokens(new[]
+{
+    new AuthenticationToken
+    {
+        Name = "access_token",
+        Value = user.SupabaseAccessToken
+    },
+    new AuthenticationToken
+    {
+        Name = "refresh_token",
+        Value = user.SupabaseRefreshToken
+    }
+});
+
+            await HttpContext.SignInAsync(
+     CookieAuthenticationDefaults.AuthenticationScheme,
+     principal,
+     authProperties);
+
+            TempData["SuccessMessage"] = $"Welcome back, {user.FullName}!";
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Index", "Dashboard");
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ModelState.AddModelError(
+                    "", "Please enter your email address.");
+                return View();
+            }
+
+            try
+            {
+                await _supabaseClient.Auth.ResetPasswordForEmail(
+    new Supabase.Gotrue.ResetPasswordForEmailOptions(
+        email.Trim())
+    {
+        RedirectTo = "https://localhost:7114/Account/ResetPassword"
+    });
+
+                TempData["SuccessMessage"] =
+                    "If this email is registered, a password reset link will be sent.";
+
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+            catch
+            {
+                ModelState.AddModelError(
+                    "", "Unable to send the reset link right now. Please try again later.");
+
+                return View();
+            }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResetPassword()
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.Pragma = "no-cache";
+
+            return View();
+        }
+
+        [Authorize(Roles = "Administrator")]
+        [HttpGet]
+        public IActionResult Register()
+        {
+            return View(new RegisterViewModel());
+        }
+
+        [Authorize(Roles = "Administrator")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _supabase.RegisterStaffAsync(model);
+            if (!result.Success)
+            {
+                ModelState.AddModelError("", result.ErrorMessage);
+                return View(model);
+            }
+
+            TempData["SuccessMessage"] = "Staff account created successfully! Please sign in with your credentials.";
+            return RedirectToAction("Login");
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction("Login");
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Profile()
+        {
+            var email = User.FindFirst(
+                System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
+
+            try
+            {
+                var staffUsers = await _supabase.GetStaffUsersAsync();
+
+                var currentUser = staffUsers.FirstOrDefault(
+                    u => string.Equals(
+                        u.Email,
+                        email,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (currentUser == null)
+                {
+                    TempData["ErrorMessage"] =
+                        "Your staff profile could not be found.";
+
+                    return RedirectToAction("Dashboard", "Home");
+                }
+
+                var model = new UserProfileViewModel
+                {
+                    FullName = currentUser.FullName,
+                    Email = currentUser.Email,
+                    Phone = currentUser.Phone,
+                    Role = currentUser.Role,
+                    Branch = currentUser.Branch
+                };
+
+                return View(model);
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] =
+                    "Unable to load your profile. Please sign in again.";
+
+                return RedirectToAction("Dashboard", "Home");
+            }
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile(
+      UserProfileViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.FullName))
+            {
+                TempData["ErrorMessage"] =
+                    "Full name cannot be empty.";
+
+                return RedirectToAction("Profile");
+            }
+
+            try
+            {
+                var updated = await _supabase.UpdateMyProfileAsync(
+                    model.FullName,
+                    model.Phone ?? "");
+
+                if (!updated)
+                {
+                    TempData["ErrorMessage"] =
+                        "Profile was not updated. Please sign in again.";
+                    return RedirectToAction("Profile");
+                }
+
+                TempData["SuccessMessage"] =
+                    "Profile information updated successfully.";
+
+                return RedirectToAction("Profile");
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] =
+                    "Unable to update your profile. Please try again.";
+
+                return RedirectToAction("Profile");
+            }
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(
+     string CurrentPassword,
+     string NewPassword,
+     string ConfirmNewPassword)
+        {
+            if (string.IsNullOrWhiteSpace(CurrentPassword) ||
+                string.IsNullOrWhiteSpace(NewPassword))
+            {
+                TempData["ErrorMessage"] =
+                    "Please complete all password fields.";
+
+                return RedirectToAction("Profile");
+            }
+
+            if (NewPassword != ConfirmNewPassword)
+            {
+                TempData["ErrorMessage"] =
+                    "New passwords do not match.";
+
+                return RedirectToAction("Profile");
+            }
+
+            if (NewPassword.Length < 8)
+            {
+                TempData["ErrorMessage"] =
+                    "New password must contain at least 8 characters.";
+
+                return RedirectToAction("Profile");
+            }
+
+            if (CurrentPassword == NewPassword)
+            {
+                TempData["ErrorMessage"] =
+                    "Your new password must be different from your current password.";
+
+                return RedirectToAction("Profile");
+            }
+
+            try
+            {
+                var changed = await _supabase.ChangeMyPasswordAsync(
+                    CurrentPassword,
+                    NewPassword);
+
+                if (!changed)
+                {
+                    TempData["ErrorMessage"] =
+                        "Current password is incorrect.";
+
+                    return RedirectToAction("Profile");
+                }
+
+                TempData["SuccessMessage"] =
+                    "Password changed successfully.";
+
+                return RedirectToAction("Profile");
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] =
+                    "Unable to change password. Please try again.";
+
+                return RedirectToAction("Profile");
+            }
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult AccessDenied()
+        {
+            return View();
+        }
+    }
+
+}
